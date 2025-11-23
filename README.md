@@ -3,6 +3,9 @@
 ## Overview
 A React-based Spring Initializr client that fetches live metadata from https://start.spring.io to generate Spring Boot starter projects. Users can configure project settings, preview the generated URL, download the ZIP, and export a shareable JSON config with a deep link to recreate the same setup.
 
+## Screenshot
+![UI Presentation](static/img/ui-presentation-page.png)
+
 ## Key Benefits
 - Dynamic UI driven by Initializr metadata
 - Generates Spring Boot starter ZIP via query parameters
