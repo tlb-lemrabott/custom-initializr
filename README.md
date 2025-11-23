@@ -33,6 +33,11 @@ A React-based Spring Initializr client that fetches live metadata from https://s
 6) Restore from backlink
 - Opening the backlink pre-fills the UI with the same configuration.
 
+## ⚙️ System Workflow
+1) Fetches live metadata: UI → calls Proxy `/api/initializr/metadata` → Proxy → requests metadata from `start.spring.io` → Proxy returns options back to UI → UI renders dynamic form.
+2) ZIP generation: UI → builds query params → calls Proxy `/api/initializr/starter.zip?...` → Proxy forwards to https://lnkd.in/eTEFNRDp → ZIP file returned → UI downloads it.
+3) JSON config export: UI → generates JSON blueprint locally (including backlink) → user saves file via browser file picker → file can later restore full configuration via deep link.
+
 ## APIs & Contracts
 Note: The app uses a proxy on `localhost:8080`. Ensure it runs before the UI.
 
