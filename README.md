@@ -5,6 +5,7 @@ A React-based Spring Initializr client that fetches live metadata from https://s
 
 ## Screenshot
 ![UI Presentation](static/img/ui-presentation-page.png)
+![UI Presentation (Part 2)](static/img/ui-presentation-page-part2.png)
 
 ## Key Benefits
 - Dynamic UI driven by Initializr metadata
