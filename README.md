@@ -1,278 +1,214 @@
 # Custom Spring Initializr Web UI
 
-## Description:
-A custom React-based Spring Initializr client that fetches real-time metadata from https://start.spring.io to generate Spring Boot starter projects. It allows users to configure project settings, preview the generated URL, download the starter ZIP, and export a shareable JSON config with a deep-link to recreate the same project setup.
+## Overview
+A React-based Spring Initializr client that fetches live metadata from https://start.spring.io to generate Spring Boot starter projects. Users can configure project settings, preview the generated URL, download the ZIP, and export a shareable JSON config with a deep link to recreate the same setup.
 
-## Key Value
-- Dynamic UI driven by Initializr metadata.
-- Generates Spring Boot starter ZIP via query parameters.
-- Exports configuration as a downloadable JSON file.
-- Backlink support to restore saved project options instantly.
-- URL-synced form enables sharing reproducible project templates.
+## Key Benefits
+- Dynamic UI driven by Initializr metadata
+- Generates Spring Boot starter ZIP via query parameters
+- Exports configuration as a downloadable JSON file
+- Backlink support to restore saved project options
+- URL-synced form for sharing reproducible templates
 
+## Workflow
+1) Fetch metadata
+- UI requests options from `http://localhost:8080/api/initializr/metadata` (Accept: `application/vnd.initializr.v2.3+json`). This endpoint proxies Spring Initializr.
 
-## 🔄 Process Workflow
-1. Fetch Metadata
-    - UI loads and requests project options from `GET http://localhost:8080/api/initializr/metadata` (GET, Accept: application/vnd.initializr.v2.3+json)
-    - This endpoint proxies to the Spring Initializr API
+2) Render dynamic form
+- Display available options (Boot version, dependencies, etc.) from metadata.
 
-2. Render Dynamic Form
-    - UI displays available options (Boot version, dependencies, etc.) based on metadata.
+3) Configure project
+- User selects name, groupId, version, dependencies, etc. The browser URL updates with query params.
 
-3. User Configures Project
-    - User selects values (name, groupId, version, dependencies, etc.).
-    - UI updates browser URL with query parameters.
+4) Generate & download
+- On Generate, UI builds a URL and triggers a ZIP download: `http://localhost:8080/api/initializr/starter.zip?...` (Accept: `application/vnd.initializr.v2.3+json`). Proxied to Initializr.
 
-4. Generate & Download
-    - On Generate Button Click: UI builds a Spring Initializr URL and triggers ZIP download: `http://localhost:8080/api/initializr/starter.zip?....` (GET, Accept: application/vnd.initializr.v2.3+json)
-    - This endpoint proxies to the Spring Initializr ZIP generation API
+5) Export JSON config
+- UI generates a JSON blueprint including a backlink (deep link) for later reuse.
 
-5. Export JSON Config
-    - UI generates a JSON blueprint including a backlink (deep link).
-    - User saves it using the OS save dialog.
+6) Restore from backlink
+- Opening the backlink pre-fills the UI with the same configuration.
 
-6. Restore From Backlink
-    - Opening the backlink pre-fills the UI with the same configuration.
+## APIs & Contracts
+Note: The app uses a proxy on `localhost:8080`. Ensure it runs before the UI.
 
+### Metadata API
+- Endpoint: `GET http://localhost:8080/api/initializr/metadata`
+- Headers:
+  - Accept: `application/vnd.initializr.v2.3+json`
+- Returns: options for project type, language, packaging, Boot versions, Java versions, dependencies, etc.
 
-## External APIs & Contracts
-
-**Note:** The application uses a proxy server running on `localhost:8080` to communicate with the Spring Initializr API. Make sure the proxy server is running before using the application.
-
-### 3.1 Metadata API
-    - Endpoint: GET `http://localhost:8080/api/initializr/metadata`
-    - Headers:
-        - Accept: application/vnd.initializr.v2.3+json
-        - Content-Type: application/json (for completeness, not strictly required for GET)
-
-    - Purpose: Get all options for:
-        - Project type (maven-project, gradle-project, …)
-        - Language (java, kotlin, …)
-        - Packaging (jar, war)
-        - Boot versions
-        - Java versions
-        - Dependencies (grouped by categories)
-        - etc.
-
-### 3.2 ZIP Generator API
-    - Base: `http://localhost:8080/api/initializr/starter.zip`
-    - Method: GET
-    - Headers:
-        - Accept: application/vnd.initializr.v2.3+json
-        - Content-Type: application/json (for completeness, not strictly required for GET)
-        - Query parameters:
-            Example:
-                ```text
-                type=maven-project
-                &language=java
-                &bootVersion=3.4.1
-                &baseDir=demo
-                &groupId=com.example
-                &artifactId=demo
-                &name=demo
-                &description=Demo%20project
-                &packageName=com.example.demo
-                &packaging=jar
-                &javaVersion=17
-                &configurationFileFormat=yaml
-                &dependencies=web,data-jpa
-                ```
-
----
+### ZIP Generator API
+- Endpoint: `GET http://localhost:8080/api/initializr/starter.zip`
+- Headers:
+  - Accept: `application/vnd.initializr.v2.3+json`
+- Query example:
+  ```text
+  type=maven-project
+  &language=java
+  &bootVersion=3.4.1
+  &baseDir=demo
+  &groupId=com.example
+  &artifactId=demo
+  &name=demo
+  &description=Demo%20project
+  &packageName=com.example.demo
+  &packaging=jar
+  &javaVersion=17
+  &configurationFileFormat=yaml
+  &dependencies=web,data-jpa
+  ```
 
 ## Functional Requirements
 
-### 🔄 Load Metadata on App Load
-1. Load metadata on app load
-    - Fetch metadata from /metadata/client.
-    - Handle loading / error states.
+### Load metadata on app start
+- Fetch metadata from the proxy and handle loading/error states.
 
-2. Render dynamic form
-    - Dropdown for Project Type, Language, Boot Version, Packaging, Java Version, Configuration Format, etc. 
-    - Text inputs for groupId, artifactId, name, description, baseDir, packageName.
-    - Dependency picker:
-        - Show categories
-        - Allow selecting multiple dependencies (store as codes: web, data-jpa, etc.).
+### Render dynamic form
+- Dropdowns for Project Type, Language, Boot Version, Packaging, Java Version, Configuration Format
+- Text inputs for groupId, artifactId, name, description, baseDir, packageName
+- Dependency picker with categories and multi-select (stores codes like `web`, `data-jpa`)
 
-3. URL Synchronization
-> Keep the UI state mirrored in the browser URL.
-
+### URL synchronization
 - Path: `/starter-client`
-- Query params mirror all form fields:
-  - `type`, `language`, `bootVersion`, `groupId`, `packageName`, `dependencies`, etc.
+- Query params mirror all form fields (`type`, `language`, `bootVersion`, `groupId`, `packageName`, `dependencies`, ...)
+- First load: parse query params and pre-fill the form
+- On change: update query params (via router/navigation) without reload
 
-#### ⏳ On First Load:
-- Parse URL query params
-- Pre-fill the form with them
+### Generate project
+- On Generate:
+  1. Build query string from form state
+  2. Construct ZIP URL: `http://localhost:8080/api/initializr/starter.zip?${queryString}`
+  3. Trigger download via anchor click or fetch→blob→ObjectURL
 
-#### 🔄 On Every Change:
-- Update query params via `history.pushState` or `navigate` (React Router) without reload.
+### JSON config
+- Provide a Download JSON action that saves the current config and a backlink.
+  Example:
+  ```json
+  {
+    "type": "maven-project",
+    "language": "java",
+    "bootVersion": "3.4.2",
+    "name": "orders-service",
+    "configurationFileFormat": "yaml",
+    "dependencies": ["web", "data-jpa"],
+    "groupId": "com.example",
+    "artifactId": "orders-service",
+    "packageName": "com.example.orders",
+    "javaVersion": "17",
+    "packaging": "jar",
+    "baseDir": "orders-service",
+    "description": "Orders service project",
+    "backlink": "http://localhost:3000/starter-client?type=maven-project&language=java&bootVersion=3.4.2&..."
+  }
+  ```
 
-4. Generate Project
-#### 📦 On "Generate" Button Click:
-1. Build query string from the current form state
-2. Construct ZIP URL:  
-   `http://localhost:8080/api/initializr/starter.zip?${queryString}`
-3. Trigger download:
-   - Using a hidden `<a href={url} download>` clicked programmatically, **or**
-   - `fetch → blob → createObjectURL → download`
+### Backlink behavior
+- When opened, the app parses query params, pre-fills the form, and is ready to re-generate.
 
-#### 📑 Also build JSON Config 
-Build JSON config file to be downloaded after user click on Download JSON Config file 
-Example:
-```json
-{
-  "type": "maven-project",
-  "language": "java",
-  "bootVersion": "3.4.2",
-  "name": "orders-service",
-  "configurationFileFormat": "yaml",
-  "dependencies": ["web", "data-jpa"],
-  "groupId": "com.example",
-  "artifactId": "orders-service",
-  "packageName": "com.example.orders",
-  "javaVersion": "17",
-  "packaging": "jar",
-  "baseDir": "orders-service",
-  "description": "Orders service project",
-  "backlink": "http://localhost:3000/starter-client?type=maven-project&language=java&bootVersion=3.4.2&..."
-}
-
-5. Backlink behavior
-    - When a user opens the backlink URL:
-    - The React app parses query params.
-    - Pre-fills the form with those values.
-    - User sees same configuration ready to re-generate.
-
----
-
-## Non-Functional Requirements
-- **Responsiveness:** Clean layout on desktop and laptop (you can start simple, then optimize).
-- **Performance:** Metadata loaded once and cached in state.
-- **Resilience:** 
-    - Handle metadata fetch errors (show message & retry button).
-    - Validate required fields before enabling Generate.
-- **Code quality:**
-    - Modular React components.
-    - Clear types/interfaces (prefer TypeScript if you can).
-
----
+## Non‑Functional Requirements
+- Responsiveness: clean layout on common desktop sizes
+- Performance: fetch metadata once and cache in state
+- Resilience: handle fetch errors; validate required fields before enabling Generate
+- Code quality: modular React components; clear types/interfaces (TypeScript preferred)
 
 ## Dependencies
 
-### Runtime Dependencies
-- **react** (^18.2.0) - React library for building user interfaces
-- **react-dom** (^18.2.0) - React DOM renderer
-- **react-router-dom** (^6.20.0) - React Router for client-side routing and URL synchronization
+### Runtime
+- react (^18.2.0)
+- react-dom (^18.2.0)
+- react-router-dom (^6.20.0)
 
-### Development Dependencies
-- **typescript** (^5.2.2) - TypeScript compiler and type checking
-- **vite** (^5.0.8) - Fast build tool and development server
-- **@vitejs/plugin-react** (^4.2.1) - Vite plugin for React support
-- **@types/react** (^18.2.43) - TypeScript type definitions for React
-- **@types/react-dom** (^18.2.17) - TypeScript type definitions for React DOM
-- **eslint** (^8.55.0) - JavaScript/TypeScript linter
-- **@typescript-eslint/parser** (^6.14.0) - ESLint parser for TypeScript
-- **@typescript-eslint/eslint-plugin** (^6.14.0) - ESLint plugin for TypeScript
-- **eslint-plugin-react-hooks** (^4.6.0) - ESLint rules for React hooks
-- **eslint-plugin-react-refresh** (^0.4.5) - ESLint plugin for React Fast Refresh
+### Dev
+- typescript (^5.2.2)
+- vite (^5.0.8)
+- @vitejs/plugin-react (^4.2.1)
+- @types/react (^18.2.43)
+- @types/react-dom (^18.2.17)
+- eslint (^8.55.0)
+- @typescript-eslint/parser (^6.14.0)
+- @typescript-eslint/eslint-plugin (^6.14.0)
+- eslint-plugin-react-hooks (^4.6.0)
+- eslint-plugin-react-refresh (^0.4.5)
 
----
-
-## How to Run the Project
+## Run Locally
 
 ### Prerequisites
-- **Node.js** (version 18 or higher recommended)
-- **npm** (comes with Node.js) or **yarn**
+- Node.js 18+
+- npm (or yarn)
 
-### Step 1: Start Proxy Server
-**Important:** The application requires a proxy server running on `localhost:8080`. Make sure your proxy server is running before starting the frontend application.
+### 1) Start the proxy server
+The UI expects a proxy on `localhost:8080` handling:
+- `GET /api/initializr/metadata` → proxies Spring Initializr metadata
+- `GET /api/initializr/starter.zip?params` → proxies ZIP generation
 
-The proxy should handle:
-- `GET http://localhost:8080/api/initializr/metadata` → proxies to Spring Initializr metadata API
-- `GET http://localhost:8080/api/initializr/starter.zip?params` → proxies to Spring Initializr ZIP generation API
-
-### Step 2: Install Dependencies
-Navigate to the project directory and install all required dependencies:
-
+### 2) Install dependencies
 ```bash
 cd custom-initializr
 npm install
 ```
 
-This will install all runtime and development dependencies listed in `package.json`.
-
-### Step 3: Start Development Server
-Run the development server with hot-reload:
-
+### 3) Start the dev server
 ```bash
 npm run dev
 ```
 
-The application will start and you should see output like:
+You should see output similar to:
 ```
-  VITE v5.0.8  ready in 500 ms
+VITE v5.0.8  ready in 500 ms
 
-  ➜  Local:   http://localhost:5173/
-  ➜  Network: use --host to expose
+➜  Local:   http://localhost:5173/
+➜  Network: use --host to expose
 ```
 
-Open your browser and navigate to **http://localhost:5173** (or the URL shown in the terminal).
+Open http://localhost:5173 (or the URL shown in the terminal). The app reloads automatically on changes.
 
-The app will automatically reload when you make changes to the code.
+### 4) Routes
+- Main: http://localhost:5173/starter-client
+- Root: http://localhost:5173/
 
-### Step 4: Access the Application
-- **Main route**: http://localhost:5173/starter-client
-- **Root route**: http://localhost:5173/ (also works)
+## Scripts
 
-### Available Scripts
-
-#### Development
+### Develop
 ```bash
 npm run dev
 ```
-Starts the Vite development server with hot module replacement (HMR).
 
-#### Build for Production
+### Build
 ```bash
 npm run build
 ```
-Compiles TypeScript and builds the production-ready bundle in the `dist/` directory.
 
-#### Preview Production Build
+### Preview
 ```bash
 npm run preview
 ```
-Serves the production build locally for testing (run `npm run build` first).
 
-#### Lint Code
+### Lint
 ```bash
 npm run lint
 ```
-Runs ESLint to check for code quality issues.
 
-### Troubleshooting
+## Troubleshooting
 
-**Port already in use?**
-If port 5173 is already in use, Vite will automatically try the next available port. Check the terminal output for the actual URL.
+Port in use
+- Vite tries the next available port; check terminal output.
 
-**Dependencies not installing?**
-- Make sure you have Node.js 18+ installed: `node --version`
-- Try deleting `node_modules` and `package-lock.json`, then run `npm install` again
-- Clear npm cache: `npm cache clean --force`
+Install issues
+- Verify Node.js 18+: `node --version`
+- Remove `node_modules` and `package-lock.json`, then `npm install`
+- Clear cache: `npm cache clean --force`
 
-**TypeScript errors?**
-- Run `npm run build` to see all TypeScript compilation errors
-- Make sure all dependencies are installed: `npm install`
+TypeScript errors
+- Run `npm run build` to see compilation errors
+- Ensure all deps are installed: `npm install`
 
-**Proxy server not running?**
-- Make sure the proxy server is running on `localhost:8080`
-- Check that the proxy endpoints are accessible:
+Proxy not running
+- Start proxy on `localhost:8080`
+- Check endpoints:
   - `http://localhost:8080/api/initializr/metadata`
   - `http://localhost:8080/api/initializr/starter.zip`
-- The frontend will show an error if it cannot connect to the proxy
+- The UI shows an error if it cannot connect
 
-**CORS issues?**
-- The proxy server should handle CORS headers. If you encounter CORS errors, check your proxy server configuration.
-
----
+CORS
+- Ensure the proxy sets the correct CORS headers
